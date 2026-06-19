@@ -41,6 +41,7 @@ HTML=r'''<!DOCTYPE html><html lang="en"><head>
  <div class="grid">
   <div class="card">
    <div class="frow"><label style="font-size:13px;color:var(--mut)">Industry</label><select id="sector"></select></div>
+   <div class="frow"><label style="font-size:12.5px;color:var(--mut)">Compare with (optional)</label><select id="cmp"><option value="">— none —</option></select></div>
    <svg id="curve" viewBox="0 0 560 250"></svg>
    <div class="surv" id="surv"></div>
    <h2 style="margin-top:16px">Founder / firm traits</h2>
@@ -67,6 +68,9 @@ const M=__MODEL__;const C=M.curves;const names=Object.keys(C);
 const st={sector:names[0],size:8,exp:8,funded:0,urban:0};
 const sectorSel=document.getElementById('sector');
 names.forEach(n=>{const o=document.createElement('option');o.textContent=n+'  ('+Math.round(C[n].s5*100)+'% @5yr)';o.value=n;sectorSel.appendChild(o);});
+const cmpSel=document.getElementById('cmp');
+names.forEach(n=>{const o=document.createElement('option');o.textContent=n;o.value=n;cmpSel.appendChild(o);});
+st.cmp=''; cmpSel.addEventListener('change',e=>{st.cmp=e.target.value;render();});
 function logit(p){return Math.log(p/(1-p));}function sig(z){return 1/(1+Math.exp(-z));}
 function p5(){
   const base=C[st.sector].s5;
@@ -75,16 +79,19 @@ function p5(){
   return sig(logit(base)+adj);
 }
 function drawCurve(){
-  const W=560,H=250,pad=36;const cur=C[st.sector].survival;
+  const W=560,H=250,pad=36;const c=C[st.sector];const cur=c.survival;
   const xs=t=>pad+t/10*(W-pad-10);const ys=v=>H-26-v*(H-46);
-  // overall average curve
   const avg=[];for(let t=0;t<=10;t++){let s=0;names.forEach(n=>s+=C[n].survival[t]);avg.push(s/names.length);}
   const line=(arr,col,w)=>`<polyline points="${arr.map((v,t)=>xs(t).toFixed(1)+','+ys(v).toFixed(1)).join(' ')}" fill="none" stroke="${col}" stroke-width="${w}"/>`;
-  let grid='';for(let v=0;v<=1;v+=0.25){grid+=`<line x1="${pad}" y1="${ys(v)}" x2="${W-10}" y2="${ys(v)}" stroke="#16203200" style="stroke:#172033"/><text x="${pad-6}" y="${ys(v)+4}" fill="#5f7396" font-size="10" text-anchor="end">${Math.round(v*100)}%</text>`;}
+  let grid='';for(let v=0;v<=1;v+=0.25){grid+=`<line x1="${pad}" y1="${ys(v)}" x2="${W-10}" y2="${ys(v)}" style="stroke:#172033"/><text x="${pad-6}" y="${ys(v)+4}" fill="#5f7396" font-size="10" text-anchor="end">${Math.round(v*100)}%</text>`;}
   for(let t=0;t<=10;t+=2)grid+=`<text x="${xs(t)}" y="${H-8}" fill="#5f7396" font-size="10" text-anchor="middle">${t}y</text>`;
-  document.getElementById('curve').innerHTML=grid+line(avg,'#42506e',1.5)+line(cur,'#27d08a',3)+
-    `<text x="${W-12}" y="${ys(cur[10])-6}" fill="#27d08a" font-size="11" text-anchor="end">this industry</text>`+
-    `<text x="${W-12}" y="${ys(avg[10])+14}" fill="#8aa0bf" font-size="10" text-anchor="end">all-industry avg</text>`;
+  // 95% CI band for the selected industry
+  const band=c.ci_hi.map((v,t)=>xs(t).toFixed(1)+','+ys(v).toFixed(1)).join(' ')+' '+c.ci_lo.map((v,t)=>xs(10-t).toFixed(1)+','+ys(c.ci_lo[10-t]).toFixed(1)).join(' ');
+  let svg=grid+`<polygon points="${band}" fill="#27d08a" opacity="0.15"/>`+line(avg,'#42506e',1.5);
+  if(st.cmp && st.cmp!==st.sector){ svg+=line(C[st.cmp].survival,'#fb923c',2.5)+`<text x="${W-12}" y="${ys(C[st.cmp].survival[10])+(C[st.cmp].survival[10]>cur[10]?-6:14)}" fill="#fb923c" font-size="11" text-anchor="end">${st.cmp.split(' ')[0]}</text>`; }
+  svg+=line(cur,'#27d08a',3)+`<text x="${W-12}" y="${ys(cur[10])-6}" fill="#27d08a" font-size="11" text-anchor="end">this industry ±95%</text>`+
+    `<text x="${pad+4}" y="${ys(avg[10])+14}" fill="#8aa0bf" font-size="10">all-industry avg</text>`;
+  document.getElementById('curve').innerHTML=svg;
 }
 function render(){
   document.getElementById('vsize').textContent=st.size;

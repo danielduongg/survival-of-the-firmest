@@ -39,6 +39,30 @@ for name,(s1,s5) in SECTORS.items():
     pts=[round(surv(t,k,lam),3) for t in range(0,11)]
     curves[name]=dict(k=round(k,3),lam=round(lam,3),survival=pts,s5=round(surv(5,k,lam),3))
 
+# Kaplan-Meier 95% CI per sector from a finite simulated cohort (Greenwood variance)
+def km_band(k,lam,n=400,seed=0):
+    r=np.random.default_rng(seed)
+    t=lam*r.weibull(k,n)                    # time-to-close ~ Weibull(k,lam)
+    obs=np.minimum(t,10.0); event=(t<=10.0)
+    order=np.argsort(obs); obs=obs[order]; event=event[order]
+    S=1.0; varsum=0.0; at_risk=n
+    surv_y={0:(1.0,0.0)}; yi=1
+    for i in range(n):
+        ar=n-i
+        if event[i]:
+            S*=(1-1/ar); varsum+=1/(ar*(ar-1)) if ar>1 else 0
+        while yi<=10 and obs[i]>=yi:
+            se=S*np.sqrt(varsum)
+            surv_y[yi]=(S,1.96*se); yi+=1
+    while yi<=10:
+        se=S*np.sqrt(varsum); surv_y[yi]=(S,1.96*se); yi+=1
+    return [round(surv_y[y][1],3) for y in range(11)]      # 95% half-widths
+for i,(name,(s1,s5)) in enumerate(SECTORS.items()):
+    w=km_band(curves[name]["k"],curves[name]["lam"],seed=i)
+    base=curves[name]["survival"]
+    curves[name]["ci_lo"]=[round(max(0,base[y]-w[y]),3) for y in range(11)]
+    curves[name]["ci_hi"]=[round(min(1,base[y]+w[y]),3) for y in range(11)]
+
 # ---- simulate establishments to test predictability ----
 rng=np.random.default_rng(7)
 names=list(SECTORS); base5={n:curves[n]["s5"] for n in names}

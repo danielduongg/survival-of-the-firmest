@@ -1,5 +1,7 @@
 # 📉 survival-of-the-firmest — will the business make it?
 
+[![CI](https://github.com/danielduongg/survival-of-the-firmest/actions/workflows/ci.yml/badge.svg)](https://github.com/danielduongg/survival-of-the-firmest/actions)
+
 Kaplan–Meier-style **business survival curves by industry**, grounded in U.S. Bureau of Labor Statistics data — plus an honest test of whether you can predict an *individual* company's survival.
 
 ### ▶️ [Live demo](https://danielduongg.github.io/survival-of-the-firmest/)
@@ -21,6 +23,17 @@ Founder/firm attributes lift AUC barely above a coin flip. **Which industry you'
 ## Survival by industry (5-year, BLS-grounded)
 
 Health care **59%** · Education 55% · Finance 52% · Manufacturing 50% · Professional svcs 48% · Retail 45% · Construction / Information 43% · Transportation 41% · **Restaurants 40%**
+
+## Results
+
+![Survival curves by industry](fig_survival_curves.png)
+![AUC comparison](fig_auc_comparison.png)
+
+The demo now shades a **95% confidence band** (Kaplan–Meier with Greenwood variance from a finite simulated cohort) and lets you **overlay a second industry** for comparison.
+
+## Tests & CI
+
+`pytest` checks every survival curve is monotonic, 5-year survival sits in the BLS-grounded range, the CI band brackets the curve, and the individual-firm AUC stays weak (the base-rate finding). GitHub Actions runs it on every push.
 
 ## Method
 
